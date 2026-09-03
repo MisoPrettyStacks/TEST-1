@@ -3,166 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Open AI Gen: Cinematic Master</title>
+    <title>Open AI Gen: Cinematic Master (Free Edition)</title>
     <style>
-        :root { --gold: #d4af37; --bg: #0a0a0a; --card: #161616; --text: #e0e0e0; }
-        body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { max-width: 900px; width: 100%; }
-        .card { background: var(--card); padding: 25px; border-radius: 12px; border: 1px solid #333; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
-        h1 { color: var(--gold); text-transform: uppercase; letter-spacing: 3px; text-align: center; font-size: 24px; margin-bottom: 30px; border-bottom: 1px solid var(--gold); display: inline-block; width: 100%; padding-bottom: 10px; }
-        label { color: var(--gold); font-size: 11px; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 8px; }
-        input, select, textarea { width: 100%; padding: 12px; margin-bottom: 15px; background: #000; border: 1px solid #444; color: #fff; border-radius: 4px; font-size: 14px; }
-        button { width: 100%; padding: 16px; background: var(--gold); border: none; border-radius: 4px; color: #000; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
-        button:hover { background: #fff; box-shadow: 0 0 15px var(--gold); }
-        .status { font-size: 12px; color: #888; margin-bottom: 10px; }
+        :root { --gold: #c5a059; --bg: #0a0a0a; --card: #1a1a1a; --text: #e0e0e0; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { max-width: 800px; width: 100%; }
+        .card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid #333; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { color: var(--gold); text-transform: uppercase; letter-spacing: 2px; text-align: center; border-bottom: 1px solid var(--gold); padding-bottom: 10px; }
+        label { color: var(--gold); font-size: 10px; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 5px; }
+        input, select, textarea { width: 100%; padding: 10px; margin-bottom: 12px; background: #000; border: 1px solid #444; color: #fff; border-radius: 4px; font-size: 13px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button { width: 100%; padding: 14px; background: var(--gold); border: none; border-radius: 4px; color: #000; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        button:hover { background: #fff; }
+        .lock-box { background: #000; padding: 12px; border: 1px dashed var(--gold); font-size: 12px; color: #aaa; margin-top: 10px; }
         #resultArea img { width: 100%; border-radius: 8px; margin-top: 20px; border: 1px solid var(--gold); }
-        .lock-box { background: #000; padding: 15px; border: 1px dashed var(--gold); font-size: 12px; color: #aaa; margin-top: 10px; white-space: pre-wrap; }
-        .error { color: #ff4444; font-size: 12px; background: #221111; padding: 10px; border-radius: 4px; display: none; }
+        .cheat-sheet { font-size: 11px; color: #666; margin-top: 5px; font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Cinematic Prompt Framework</h1>
+    <h1>Cinematic Master</h1>
 
-    <!-- API CONFIG -->
-    <div class="card" style="border-color: #555;">
-        <label>System Config</label>
-        <input type="password" id="apiKey" placeholder="Enter Pollinations API Key (Required for Style Analysis)">
-        <p style="font-size: 10px; color: #666;">Get a key at enter.pollinations.ai to enable Step 1.</p>
-    </div>
-
-    <!-- STEP 1: FRAMEWORK LOCK -->
+    <!-- STEP 1: MANUAL FRAMEWORK LOCK -->
     <div class="card">
-        <label>1. Lock the Cinematic Framework</label>
-        <input type="file" id="styleImage" accept="image/*">
-        <input type="text" id="styleName" placeholder="Framework Name (e.g. 'Cyberpunk-Blade')">
-        <button onclick="lockFramework()">Extract Shot Data</button>
-        <div id="styleStatus" class="status"></div>
-        <div id="errorBox" class="error"></div>
-        <div id="lockPreview" class="lock-box" style="display:none"></div>
+        <label>Step 1: Create a Manual Style Lock</label>
+        <p style="font-size: 12px; color: #888;">Fill this out based on your reference image to "Lock" the style for free.</p>
+        
+        <input type="text" id="lockName" placeholder="Name this style (e.g. Noir-Film)">
+        
+        <div class="grid">
+            <div>
+                <label>Visual Style</label>
+                <input type="text" id="fStyle" placeholder="e.g. 1940s Film Noir, Grainy">
+            </div>
+            <div>
+                <label>Lighting & Color</label>
+                <input type="text" id="fLight" placeholder="e.g. High contrast, blue shadows">
+            </div>
+            <div>
+                <label>Camera/Lens</label>
+                <input type="text" id="fCam" placeholder="e.g. Wide angle, 35mm, low angle">
+            </div>
+            <div>
+                <label>Details/Texture</label>
+                <input type="text" id="fDetail" placeholder="e.g. Rain droplets, metallic wear">
+            </div>
+        </div>
+        <button onclick="saveManualLock()">Save Style Lock</button>
+        <div id="saveStatus" style="font-size:12px; margin-top:10px; color: var(--gold);"></div>
     </div>
 
     <!-- STEP 2: GENERATOR -->
     <div class="card">
-        <label>2. Subject + Action (The Story)</label>
+        <label>Step 2: Generate Image</label>
         <select id="styleSelect" onchange="showCurrentLock()"></select>
-        <textarea id="userPrompt" rows="3" placeholder="Example: A lone samurai standing under a neon billboard in the rain."></textarea>
+        <textarea id="userPrompt" rows="3" placeholder="Describe the Subject + Action (e.g. A detective standing in the rain)"></textarea>
+        
         <button onclick="generateFinal()">Generate Master Shot</button>
+        <div class="cheat-sheet">Fixes applied: No text, no scribbles, no extra limbs.</div>
     </div>
 
     <div id="resultArea"></div>
 </div>
 
 <script>
-    let savedFrameworks = JSON.parse(localStorage.getItem('cinematicLocks') || '{}');
+    let savedLocks = JSON.parse(localStorage.getItem('manualCinematicLocks') || '{}');
     updateDropdown();
 
     function updateDropdown() {
         const select = document.getElementById('styleSelect');
-        select.innerHTML = '<option value="">Standard (No Framework Lock)</option>';
-        for (let name in savedFrameworks) {
+        select.innerHTML = '<option value="">No Style (Standard Mode)</option>';
+        for (let name in savedLocks) {
             let opt = document.createElement('option');
             opt.value = name;
-            opt.innerText = `FRAMEWORK: ${name}`;
+            opt.innerText = `STYLE: ${name}`;
             select.appendChild(opt);
         }
     }
 
-    function showCurrentLock() {
-        const name = document.getElementById('styleSelect').value;
-        const preview = document.getElementById('lockPreview');
-        if (name && savedFrameworks[name]) {
-            preview.style.display = "block";
-            preview.innerText = savedFrameworks[name];
-        } else {
-            preview.style.display = "none";
-        }
+    function saveManualLock() {
+        const name = document.getElementById('lockName').value;
+        const style = document.getElementById('fStyle').value;
+        const light = document.getElementById('fLight').value;
+        const cam = document.getElementById('fCam').value;
+        const detail = document.getElementById('fDetail').value;
+
+        if (!name) return alert("Give your style a name!");
+
+        // Build the framework string
+        const frameworkString = `Visual Style: ${style}. Lighting: ${light}. Camera: ${cam}. Details: ${detail}.`;
+        
+        savedLocks[name] = frameworkString;
+        localStorage.setItem('manualCinematicLocks', JSON.stringify(savedLocks));
+        
+        document.getElementById('saveStatus').innerText = `✅ Style "${name}" saved to your browser!`;
+        updateDropdown();
     }
 
-    // --- STEP 1: ANALYSIS ---
-    async function lockFramework() {
-        const file = document.getElementById('styleImage').files[0];
-        const name = document.getElementById('styleName').value;
-        const key = document.getElementById('apiKey').value;
-        const status = document.getElementById('styleStatus');
-        const err = document.getElementById('errorBox');
-
-        if (!file || !name || !key) {
-            alert("API Key, Image, and Name are all required for analysis.");
-            return;
-        }
-
-        err.style.display = "none";
-        status.innerText = "Step 1: Uploading media...";
-
-        const formData = new FormData();
-        formData.append('reqtype', 'fileupload');
-        formData.append('fileToUpload', file);
-
-        try {
-            // Upload to Media Storage
-            const uploadRes = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://catbox.moe/user/api.php'), {
-                method: 'POST',
-                body: formData
-            });
-            const imgUrl = await uploadRes.text();
-
-            // Analyze using the Cinematic Framework Infographic structure
-            status.innerText = "Step 2: Decoding Cinematic Framework...";
-            
-            const systemPrompt = `You are a Cinematic AI Prompt Engineer. Analyze this image and output exactly 4 blocks based on this framework:
-            [VISUAL STYLE]: genre, era, medium.
-            [LIGHTING & COLOR]: setup, palette, direction.
-            [CAMERA]: lens, angle, composition.
-            [DETAIL & TEXTURE]: materials, surface realism.
-            Limit to 30 words total. No conversational text.`;
-
-            const aiRes = await fetch(`https://gen.pollinations.ai/text/${encodeURIComponent("Analyze " + imgUrl)}?system=${encodeURIComponent(systemPrompt)}&key=${key}`);
-            
-            if (!aiRes.ok) {
-                const errorData = await aiRes.json();
-                throw new Error(errorData.error.message || "API Error");
-            }
-
-            const analysis = await aiRes.text();
-
-            savedFrameworks[name] = analysis;
-            localStorage.setItem('cinematicLocks', JSON.stringify(savedFrameworks));
-            
-            status.innerText = "✅ Framework Successfully Locked.";
-            updateDropdown();
-            showCurrentLock();
-        } catch (e) {
-            err.style.display = "block";
-            err.innerText = "ANALYSIS FAILED: " + e.message;
-            status.innerText = "";
-        }
-    }
-
-    // --- STEP 2: GENERATION ---
     async function generateFinal() {
         const prompt = document.getElementById('userPrompt').value;
         const lockName = document.getElementById('styleSelect').value;
         const resultArea = document.getElementById('resultArea');
 
-        if (!prompt) return alert("Enter your Subject + Action!");
+        if (!prompt) return alert("Enter a subject!");
 
-        resultArea.innerHTML = "<p style='text-align:center;'>Mastering Cinematic Framework...</p>";
+        resultArea.innerHTML = "<p style='text-align:center; color: #666;'>AI is painting your cinematic shot...</p>";
 
-        // NEGATIVE CONSTRAINTS CHEAT SHEET (From Infographic)
-        const guardrails = "No text, no watermarks, no extra limbs, no blurry, no warped objects, no plastic skin, no scribbles, no letters, no numbers.";
+        // The "Scribble" and "Text" Fix (The Guardrails)
+        const guardrails = "clean image, no text, no watermarks, no letters, no numbers, no gibberish, no signatures, no warped objects, high quality photography";
 
         let finalPrompt = "";
-        if (lockName && savedFrameworks[lockName]) {
-            // Framework Structure: [Story] + [Framework Lock] + [Guardrails]
-            finalPrompt = `[STORY]: ${prompt}. [CINEMATIC FRAMEWORK]: ${savedFrameworks[lockName]}. [GUARDRAILS]: ${guardrails}, ultra-professional cinematic grade.`;
+        if (lockName && savedLocks[lockName]) {
+            // Apply the Infographic Framework: Story + Framework + Guardrails
+            finalPrompt = `[STORY]: ${prompt}. [FRAMEWORK]: ${savedLocks[lockName]}. [GUARDRAILS]: ${guardrails}.`;
         } else {
-            finalPrompt = `${prompt}. [GUARDRAILS]: ${guardrails}.`;
+            finalPrompt = `${prompt}. ${guardrails}`;
         }
 
-        const seed = Math.floor(Math.random() * 888888);
-        const url = `https://gen.pollinations.ai/image/${encodeURIComponent(finalPrompt)}?model=flux&width=1280&height=720&nologo=true&seed=${seed}`;
+        const seed = Math.floor(Math.random() * 1000000);
+        // Using the free image endpoint
+        const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?model=flux&width=1280&height=720&nologo=true&seed=${seed}`;
 
         const img = new Image();
         img.src = url;
