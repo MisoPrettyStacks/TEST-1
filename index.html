@@ -1,0 +1,138 @@
+#!/usr/bin/env node
+
+const fs = require('fs');
+const https = require('https');
+const path = require('path');
+
+const STYLES_FILE = path.join(__dirname, 'styles.json');
+
+// Initialize styles file if it doesn't exist
+if (!fs.existsSync(STYLES_FILE)) {
+    fs.writeFileSync(STYLES_FILE, JSON.stringify({}));
+}
+
+/**
+ * Helper: Simple POST request for uploading to a free host (Catbox)
+ * This allows the AI to "see" your local image via a URL.
+ */
+function uploadToHost(filePath) {
+    return new Promise((resolve, reject) => {
+        const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
+        const fileName = path.basename(filePath);
+        
+        const options = {
+            hostname: 'catbox.moe',
+            port: 443,
+            path: '/user/api.php',
+            method: 'POST',
+            headers: {
+                'Content-Type': `multipart/form-data; boundary=${boundary}`
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => data += chunk);
+            res.on('end', () => resolve(data.trim()));
+        });
+
+        req.on('error', reject);
+
+        // Construct Multipart Body
+        req.write(`--${boundary}\r\n`);
+        req.write(`Content-Disposition: form-data; name="reqtype"\r\n\r\nfileupload\r\n`);
+        req.write(`--${boundary}\r\n`);
+        req.write(`Content-Disposition: form-data; name="fileToUpload"; filename="${fileName}"\r\n`);
+        req.write(`Content-Type: image/jpeg\r\n\r\n`);
+        
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.on('end', () => {
+            req.write(`\r\n--${boundary}--`);
+            req.end();
+        });
+        fileStream.pipe(req, { end: false });
+    });
+}
+
+/**
+ * Helper: Ask AI to describe the style of an image
+ */
+async function getAestheticDescription(imageUrl) {
+    const systemPrompt = "Describe only the visual style, lighting, artistic medium, and aesthetic of this image in 20 words. Do not describe the subject, only the 'look'.";
+    const userPrompt = `What is the aesthetic of this image? ${imageUrl}`;
+    
+    const url = `https://text.pollinations.ai/${encodeURIComponent(userPrompt)}?system=${encodeURIComponent(systemPrompt)}`;
+    
+    const res = await new Promise(resolve => https.get(url, resolve));
+    let data = '';
+    for await (const chunk of res) data += chunk;
+    return data.trim();
+}
+
+/**
+ * Main Logic
+ */
+async function run() {
+    const args = process.argv.slice(2);
+    const cmd = args[0];
+
+    const styles = JSON.parse(fs.readFileSync(STYLES_FILE));
+
+    if (cmd === 'save-style') {
+        const imgPath = args[args.indexOf('--image') + 1];
+        const styleName = args[args.indexOf('--name') + 1];
+
+        if (!imgPath || !styleName) {
+            console.log("Usage: node open-gen.js save-style --image ./ref.jpg --name MyArtStyle");
+            return;
+        }
+
+        console.log(`[*] Uploading image to analyze...`);
+        const url = await uploadToHost(imgPath);
+        
+        console.log(`[*] Analyzing aesthetic...`);
+        const description = await getAestheticDescription(url);
+        
+        styles[styleName] = description;
+        fs.writeFileSync(STYLES_FILE, JSON.stringify(styles, null, 2));
+        
+        console.log(`[+] Style "${styleName}" locked!`);
+        console.log(`[i] Lock Prompt: ${description}`);
+
+    } else if (cmd === 'list') {
+        console.log("--- Saved Styles ---");
+        Object.keys(styles).forEach(s => console.log(`- ${s}`));
+
+    } else if (cmd === 'generate') {
+        const promptIdx = args.indexOf('--prompt');
+        const styleIdx = args.indexOf('--style');
+        
+        if (promptIdx === -1) {
+            console.log("Usage: node open-gen.js generate --prompt \"cat\" [--style MyStyle]");
+            return;
+        }
+
+        let finalPrompt = args[promptIdx + 1];
+        const styleName = styleIdx !== -1 ? args[styleIdx + 1] : null;
+
+        if (styleName && styles[styleName]) {
+            console.log(`[*] Applying Lock Prompt: ${styleName}`);
+            finalPrompt = `${finalPrompt}, in the style of ${styles[styleName]}`;
+        }
+
+        const output = "result.jpg";
+        const apiUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?model=flux&nologo=true`;
+
+        console.log(`[*] Generating...`);
+        https.get(apiUrl, (res) => {
+            const file = fs.createWriteStream(output);
+            res.pipe(file);
+            file.on('finish', () => console.log(`[+] Image saved to ${output}`));
+        });
+
+    } else {
+        console.log("Commands: save-style, generate, list");
+    }
+}
+
+run();
