@@ -3,57 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Open AI Generator</title>
+    <title>Open AI Generator v2</title>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; line-height: 1.6; background: #f4f4f9; }
-        .box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        input, select, button { padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; }
-        button { background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
-        button:hover { background: #0056b3; }
-        img { max-width: 100%; border-radius: 8px; margin-top: 20px; border: 1px solid #ddd; }
-        .loading { color: #666; font-style: italic; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; background: #f0f2f5; color: #1c1e21; }
+        .box { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        h1 { text-align: center; color: #007bff; }
+        input, select, button { padding: 12px; margin: 8px 0; width: 100%; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { background: #0056b3; transform: translateY(-1px); }
+        .style-tag { display: inline-block; background: #e7f3ff; color: #007bff; padding: 4px 10px; border-radius: 4px; font-size: 12px; margin-top: 5px; border: 1px solid #d0e7ff; }
+        img { max-width: 100%; border-radius: 10px; margin-top: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); display: block; }
+        .loading { text-align: center; padding: 20px; color: #666; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
     </style>
 </head>
 <body>
 
     <h1>Open AI Gen</h1>
 
-    <!-- SECTION 1: SAVE A STYLE -->
     <div class="box">
-        <h3>1. Lock a Style</h3>
-        <p><small>Upload an image to extract its aesthetic "Lock Prompt".</small></p>
+        <h3>1. Create Lock Prompt</h3>
         <input type="file" id="styleImage" accept="image/*">
-        <input type="text" id="styleName" placeholder="Name this style (e.g. 'ComicBook')">
-        <button onclick="saveStyle()">Analyze & Save Style</button>
+        <input type="text" id="styleName" placeholder="Style Name (e.g. 'OldBook')">
+        <button onclick="saveStyle()">Lock Aesthetic</button>
         <div id="styleStatus"></div>
     </div>
 
-    <!-- SECTION 2: GENERATE -->
     <div class="box">
-        <h3>2. Generate Image</h3>
+        <h3>2. Generate</h3>
+        <select id="styleSelect" onchange="showStyleHint()"></select>
+        <div id="styleHint" style="font-size: 11px; color: #888; margin-bottom: 10px;"></div>
         <input type="text" id="userPrompt" placeholder="What do you want to see?">
-        <select id="styleSelect">
-            <option value="">No Style (Original)</option>
-        </select>
-        <button onclick="generateImage()">Generate</button>
+        <button onclick="generateImage()">Create Image</button>
     </div>
 
     <div id="resultArea"></div>
 
     <script>
-        // Load saved styles from local storage on page load
         let savedStyles = JSON.parse(localStorage.getItem('myAiStyles') || '{}');
         updateStyleDropdown();
 
         function updateStyleDropdown() {
             const select = document.getElementById('styleSelect');
-            select.innerHTML = '<option value="">No Style (Original)</option>';
+            select.innerHTML = '<option value="">Standard (No Lock)</option>';
             for (let name in savedStyles) {
                 let opt = document.createElement('option');
                 opt.value = name;
-                opt.innerHTML = name;
+                opt.innerHTML = `Style: ${name}`;
                 select.appendChild(opt);
             }
+        }
+
+        function showStyleHint() {
+            const styleName = document.getElementById('styleSelect').value;
+            const hint = document.getElementById('styleHint');
+            hint.innerHTML = styleName ? `Current Lock: "${savedStyles[styleName]}"` : "";
         }
 
         async function saveStyle() {
@@ -61,39 +65,36 @@
             const nameInput = document.getElementById('styleName');
             const status = document.getElementById('styleStatus');
 
-            if (!fileInput.files[0] || !nameInput.value) {
-                alert("Please select an image and give the style a name.");
-                return;
-            }
+            if (!fileInput.files[0] || !nameInput.value) return alert("Select image and name!");
 
-            status.innerHTML = "Uploading to analyzer...";
+            status.innerHTML = "Processing image...";
             
-            // 1. Upload to Catbox (Free host)
             const formData = new FormData();
             formData.append('reqtype', 'fileupload');
             formData.append('fileToUpload', fileInput.files[0]);
 
             try {
+                // Upload image
                 const uploadRes = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://catbox.moe/user/api.php'), {
                     method: 'POST',
                     body: formData
                 });
                 const imageUrl = await uploadRes.text();
 
-                // 2. Ask AI to describe the style
-                status.innerHTML = "Analyzing aesthetic...";
-                const systemPrompt = "Describe only the visual style, lighting, and aesthetic in 20 words. No subject description.";
-                const aiRes = await fetch(`https://text.pollinations.ai/${encodeURIComponent("What is the aesthetic of " + imageUrl)}?system=${encodeURIComponent(systemPrompt)}`);
+                // Extract Aesthetic
+                status.innerHTML = "Analyzing style...";
+                // We ask the AI to avoid words that cause "kaleidoscope" issues
+                const systemPrompt = "Describe the lighting, artistic medium, and color palette in 15 words. Do not describe shapes, subjects, or patterns. Focus on the FEEL and TEXTURE.";
+                const aiRes = await fetch(`https://text.pollinations.ai/${encodeURIComponent("Describe the aesthetic of " + imageUrl)}?system=${encodeURIComponent(systemPrompt)}`);
                 const aestheticDescription = await aiRes.text();
 
-                // 3. Save locally
-                savedStyles[nameInput.value] = aestheticDescription;
+                savedStyles[nameInput.value] = aestheticDescription.replace(/[".]/g, ''); // Clean the text
                 localStorage.setItem('myAiStyles', JSON.stringify(savedStyles));
                 
                 updateStyleDropdown();
-                status.innerHTML = `✅ Style "${nameInput.value}" saved!`;
+                status.innerHTML = `<div class="style-tag">Locked: ${savedStyles[nameInput.value]}</div>`;
             } catch (e) {
-                status.innerHTML = "❌ Error: " + e.message;
+                status.innerHTML = "Error! Try a smaller image file.";
             }
         }
 
@@ -104,16 +105,17 @@
 
             if (!prompt) return alert("Enter a prompt!");
 
+            // Better prompt construction: [Style] [Subject]
             let finalPrompt = prompt;
             if (styleName && savedStyles[styleName]) {
-                finalPrompt = `${prompt}, in the style of ${savedStyles[styleName]}`;
+                finalPrompt = `An image with ${savedStyles[styleName]} aesthetic, depicting ${prompt}. High quality, cohesive composition.`;
             }
 
-            resultArea.innerHTML = `<p class="loading">Generating "${finalPrompt}"...</p>`;
+            resultArea.innerHTML = `<div class="loading">AI is painting...</div>`;
             
-            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?model=flux&nologo=true&width=1024&height=1024`;
+            // Added refine=true to help Flux stay focused
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?model=flux&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
             
-            // Pre-load the image to show it nicely
             const img = new Image();
             img.src = imageUrl;
             img.onload = () => {
