@@ -1,138 +1,125 @@
-#!/usr/bin/env node
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open AI Generator</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; line-height: 1.6; background: #f4f4f9; }
+        .box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input, select, button { padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        img { max-width: 100%; border-radius: 8px; margin-top: 20px; border: 1px solid #ddd; }
+        .loading { color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
 
-const fs = require('fs');
-const https = require('https');
-const path = require('path');
+    <h1>Open AI Gen</h1>
 
-const STYLES_FILE = path.join(__dirname, 'styles.json');
+    <!-- SECTION 1: SAVE A STYLE -->
+    <div class="box">
+        <h3>1. Lock a Style</h3>
+        <p><small>Upload an image to extract its aesthetic "Lock Prompt".</small></p>
+        <input type="file" id="styleImage" accept="image/*">
+        <input type="text" id="styleName" placeholder="Name this style (e.g. 'ComicBook')">
+        <button onclick="saveStyle()">Analyze & Save Style</button>
+        <div id="styleStatus"></div>
+    </div>
 
-// Initialize styles file if it doesn't exist
-if (!fs.existsSync(STYLES_FILE)) {
-    fs.writeFileSync(STYLES_FILE, JSON.stringify({}));
-}
+    <!-- SECTION 2: GENERATE -->
+    <div class="box">
+        <h3>2. Generate Image</h3>
+        <input type="text" id="userPrompt" placeholder="What do you want to see?">
+        <select id="styleSelect">
+            <option value="">No Style (Original)</option>
+        </select>
+        <button onclick="generateImage()">Generate</button>
+    </div>
 
-/**
- * Helper: Simple POST request for uploading to a free host (Catbox)
- * This allows the AI to "see" your local image via a URL.
- */
-function uploadToHost(filePath) {
-    return new Promise((resolve, reject) => {
-        const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
-        const fileName = path.basename(filePath);
-        
-        const options = {
-            hostname: 'catbox.moe',
-            port: 443,
-            path: '/user/api.php',
-            method: 'POST',
-            headers: {
-                'Content-Type': `multipart/form-data; boundary=${boundary}`
+    <div id="resultArea"></div>
+
+    <script>
+        // Load saved styles from local storage on page load
+        let savedStyles = JSON.parse(localStorage.getItem('myAiStyles') || '{}');
+        updateStyleDropdown();
+
+        function updateStyleDropdown() {
+            const select = document.getElementById('styleSelect');
+            select.innerHTML = '<option value="">No Style (Original)</option>';
+            for (let name in savedStyles) {
+                let opt = document.createElement('option');
+                opt.value = name;
+                opt.innerHTML = name;
+                select.appendChild(opt);
             }
-        };
-
-        const req = https.request(options, (res) => {
-            let data = '';
-            res.on('data', (chunk) => data += chunk);
-            res.on('end', () => resolve(data.trim()));
-        });
-
-        req.on('error', reject);
-
-        // Construct Multipart Body
-        req.write(`--${boundary}\r\n`);
-        req.write(`Content-Disposition: form-data; name="reqtype"\r\n\r\nfileupload\r\n`);
-        req.write(`--${boundary}\r\n`);
-        req.write(`Content-Disposition: form-data; name="fileToUpload"; filename="${fileName}"\r\n`);
-        req.write(`Content-Type: image/jpeg\r\n\r\n`);
-        
-        const fileStream = fs.createReadStream(filePath);
-        fileStream.on('end', () => {
-            req.write(`\r\n--${boundary}--`);
-            req.end();
-        });
-        fileStream.pipe(req, { end: false });
-    });
-}
-
-/**
- * Helper: Ask AI to describe the style of an image
- */
-async function getAestheticDescription(imageUrl) {
-    const systemPrompt = "Describe only the visual style, lighting, artistic medium, and aesthetic of this image in 20 words. Do not describe the subject, only the 'look'.";
-    const userPrompt = `What is the aesthetic of this image? ${imageUrl}`;
-    
-    const url = `https://text.pollinations.ai/${encodeURIComponent(userPrompt)}?system=${encodeURIComponent(systemPrompt)}`;
-    
-    const res = await new Promise(resolve => https.get(url, resolve));
-    let data = '';
-    for await (const chunk of res) data += chunk;
-    return data.trim();
-}
-
-/**
- * Main Logic
- */
-async function run() {
-    const args = process.argv.slice(2);
-    const cmd = args[0];
-
-    const styles = JSON.parse(fs.readFileSync(STYLES_FILE));
-
-    if (cmd === 'save-style') {
-        const imgPath = args[args.indexOf('--image') + 1];
-        const styleName = args[args.indexOf('--name') + 1];
-
-        if (!imgPath || !styleName) {
-            console.log("Usage: node open-gen.js save-style --image ./ref.jpg --name MyArtStyle");
-            return;
         }
 
-        console.log(`[*] Uploading image to analyze...`);
-        const url = await uploadToHost(imgPath);
-        
-        console.log(`[*] Analyzing aesthetic...`);
-        const description = await getAestheticDescription(url);
-        
-        styles[styleName] = description;
-        fs.writeFileSync(STYLES_FILE, JSON.stringify(styles, null, 2));
-        
-        console.log(`[+] Style "${styleName}" locked!`);
-        console.log(`[i] Lock Prompt: ${description}`);
+        async function saveStyle() {
+            const fileInput = document.getElementById('styleImage');
+            const nameInput = document.getElementById('styleName');
+            const status = document.getElementById('styleStatus');
 
-    } else if (cmd === 'list') {
-        console.log("--- Saved Styles ---");
-        Object.keys(styles).forEach(s => console.log(`- ${s}`));
+            if (!fileInput.files[0] || !nameInput.value) {
+                alert("Please select an image and give the style a name.");
+                return;
+            }
 
-    } else if (cmd === 'generate') {
-        const promptIdx = args.indexOf('--prompt');
-        const styleIdx = args.indexOf('--style');
-        
-        if (promptIdx === -1) {
-            console.log("Usage: node open-gen.js generate --prompt \"cat\" [--style MyStyle]");
-            return;
+            status.innerHTML = "Uploading to analyzer...";
+            
+            // 1. Upload to Catbox (Free host)
+            const formData = new FormData();
+            formData.append('reqtype', 'fileupload');
+            formData.append('fileToUpload', fileInput.files[0]);
+
+            try {
+                const uploadRes = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://catbox.moe/user/api.php'), {
+                    method: 'POST',
+                    body: formData
+                });
+                const imageUrl = await uploadRes.text();
+
+                // 2. Ask AI to describe the style
+                status.innerHTML = "Analyzing aesthetic...";
+                const systemPrompt = "Describe only the visual style, lighting, and aesthetic in 20 words. No subject description.";
+                const aiRes = await fetch(`https://text.pollinations.ai/${encodeURIComponent("What is the aesthetic of " + imageUrl)}?system=${encodeURIComponent(systemPrompt)}`);
+                const aestheticDescription = await aiRes.text();
+
+                // 3. Save locally
+                savedStyles[nameInput.value] = aestheticDescription;
+                localStorage.setItem('myAiStyles', JSON.stringify(savedStyles));
+                
+                updateStyleDropdown();
+                status.innerHTML = `✅ Style "${nameInput.value}" saved!`;
+            } catch (e) {
+                status.innerHTML = "❌ Error: " + e.message;
+            }
         }
 
-        let finalPrompt = args[promptIdx + 1];
-        const styleName = styleIdx !== -1 ? args[styleIdx + 1] : null;
+        async function generateImage() {
+            const prompt = document.getElementById('userPrompt').value;
+            const styleName = document.getElementById('styleSelect').value;
+            const resultArea = document.getElementById('resultArea');
 
-        if (styleName && styles[styleName]) {
-            console.log(`[*] Applying Lock Prompt: ${styleName}`);
-            finalPrompt = `${finalPrompt}, in the style of ${styles[styleName]}`;
+            if (!prompt) return alert("Enter a prompt!");
+
+            let finalPrompt = prompt;
+            if (styleName && savedStyles[styleName]) {
+                finalPrompt = `${prompt}, in the style of ${savedStyles[styleName]}`;
+            }
+
+            resultArea.innerHTML = `<p class="loading">Generating "${finalPrompt}"...</p>`;
+            
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?model=flux&nologo=true&width=1024&height=1024`;
+            
+            // Pre-load the image to show it nicely
+            const img = new Image();
+            img.src = imageUrl;
+            img.onload = () => {
+                resultArea.innerHTML = `<h3>Result:</h3><img src="${imageUrl}">`;
+            };
         }
-
-        const output = "result.jpg";
-        const apiUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?model=flux&nologo=true`;
-
-        console.log(`[*] Generating...`);
-        https.get(apiUrl, (res) => {
-            const file = fs.createWriteStream(output);
-            res.pipe(file);
-            file.on('finish', () => console.log(`[+] Image saved to ${output}`));
-        });
-
-    } else {
-        console.log("Commands: save-style, generate, list");
-    }
-}
-
-run();
+    </script>
+</body>
+</html>
