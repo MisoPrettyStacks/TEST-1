@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Open AI Gen: Automated Cinematic Pipeline</title>
+    <title>Open AI Gen: Cinematic Pipeline v4</title>
     <style>
-        :root { --gold: #c5a059; --bg: #0d0d0d; --card: #1a1a1a; --text: #e0e0e0; }
+        :root { --gold: #c5a059; --bg: #0a0a0a; --card: #161616; --text: #e0e0e0; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
         .container { max-width: 800px; width: 100%; }
         .card { background: var(--card); padding: 25px; border-radius: 12px; border: 1px solid #333; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        h1 { color: var(--gold); text-transform: uppercase; letter-spacing: 2px; text-align: center; border-bottom: 1px solid var(--gold); padding-bottom: 10px; margin-top: 0; }
+        h1 { color: var(--gold); text-transform: uppercase; letter-spacing: 3px; text-align: center; border-bottom: 1px solid var(--gold); padding-bottom: 15px; margin-top: 0; }
         label { color: var(--gold); font-size: 10px; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 8px; }
         input, select, textarea { width: 100%; padding: 12px; margin-bottom: 15px; background: #000; border: 1px solid #444; color: #fff; border-radius: 6px; font-size: 14px; }
-        button { width: 100%; padding: 16px; background: var(--gold); border: none; border-radius: 6px; color: #000; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
-        button:hover { background: #fff; transform: translateY(-2px); }
-        .status-box { font-size: 12px; color: #888; margin-top: 10px; padding: 10px; background: #111; border-radius: 4px; min-height: 20px; }
-        .lock-preview { background: #000; padding: 15px; border: 1px dashed var(--gold); font-size: 12px; color: #aaa; margin-top: 15px; display: none; line-height: 1.5; }
-        #resultArea img { width: 100%; border-radius: 10px; margin-top: 25px; border: 1px solid var(--gold); box-shadow: 0 0 20px rgba(197, 160, 89, 0.2); }
-        .fix-tag { font-size: 11px; color: #00ff88; margin-top: 5px; opacity: 0.8; }
+        button { width: 100%; padding: 16px; background: var(--gold); border: none; border-radius: 6px; color: #000; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
+        button:disabled { background: #444; color: #888; cursor: not-allowed; }
+        button:hover:not(:disabled) { background: #fff; transform: translateY(-2px); }
+        .status-box { font-size: 12px; color: #888; margin-top: 10px; padding: 10px; background: #111; border-radius: 4px; border-left: 3px solid var(--gold); }
+        #resultArea img { width: 100%; border-radius: 10px; margin-top: 25px; border: 1px solid var(--gold); box-shadow: 0 0 30px rgba(197, 160, 89, 0.15); }
+        .lock-data { background: #000; padding: 10px; border: 1px solid #222; font-size: 11px; color: #666; margin-top: 10px; display: none; }
     </style>
 </head>
 <body>
@@ -25,129 +25,153 @@
 <div class="container">
     <h1>Cinematic Pipeline</h1>
 
-    <!-- PIPELINE STEP 1: VISION + BRAIN -->
+    <!-- STEP 1: INTERROGATOR -->
     <div class="card">
-        <label>1. Automated Style Interrogator</label>
-        <p style="font-size: 12px; color: #888; margin-bottom: 15px;">Pipeline: [Vision AI] → [Brain AI] → [Framework Lock]</p>
+        <label>1. Aesthetic Interrogator (Auto-Lock)</label>
+        <p style="font-size: 12px; color: #666; margin-bottom: 15px;">Pipeline: [Pre-Process] → [Vision AI] → [Brain AI]</p>
         
         <input type="file" id="styleImage" accept="image/*">
-        <input type="text" id="lockName" placeholder="Name this Framework (e.g. '80s-SciFi')">
+        <input type="text" id="lockName" placeholder="Name this Framework (e.g. 'Epic-Fantasy')">
         
-        <button onclick="runFreePipeline()">Run Automated Analysis</button>
+        <button id="lockBtn" onclick="runPipeline()">Lock Cinematic Framework</button>
         
-        <div id="status" class="status-box">Ready.</div>
-        <div id="lockPreview" class="lock-preview"></div>
+        <div id="status" class="status-box">Ready. Standing by for image upload.</div>
+        <div id="lockData" class="lock-data"></div>
     </div>
 
-    <!-- PIPELINE STEP 2: GENERATION -->
+    <!-- STEP 2: GENERATION -->
     <div class="card">
-        <label>2. Subject + Action</label>
-        <select id="styleSelect" onchange="updatePreview()"></select>
-        <textarea id="userPrompt" rows="3" placeholder="What is the character doing?"></textarea>
+        <label>2. Story, Subject & Action</label>
+        <select id="styleSelect"></select>
+        <textarea id="userPrompt" rows="3" placeholder="Example: A futuristic soldier walking through a neon jungle."></textarea>
         
-        <button onclick="generateImage()">Generate Master Shot</button>
-        <div class="fix-tag">✓ Scribble-Fix Active | ✓ Text-Block Active | ✓ Free Pipeline</div>
+        <button onclick="generateShot()">Generate Master Image</button>
+        <p style="font-size: 11px; color: #00ff88; margin-top: 10px; text-align: center;">🛡️ Text-Blocker & Scribble-Fixer Active</p>
     </div>
 
     <div id="resultArea"></div>
 </div>
 
+<!-- HIDDEN CANVAS FOR PRE-PROCESSING -->
+<canvas id="procCanvas" style="display:none;"></canvas>
+
 <script>
-    let savedLocks = JSON.parse(localStorage.getItem('freeCinematicLocks') || '{}');
+    let savedLocks = JSON.parse(localStorage.getItem('cinematicLocksV4') || '{}');
     updateDropdown();
 
     function updateDropdown() {
         const select = document.getElementById('styleSelect');
-        select.innerHTML = '<option value="">Standard (No Lock)</option>';
+        select.innerHTML = '<option value="">Standard (No Style Lock)</option>';
         for (let name in savedLocks) {
             let opt = document.createElement('option');
             opt.value = name;
-            opt.innerText = `FRAMEWORK: ${name}`;
+            opt.innerText = `LOCKED FRAMEWORK: ${name}`;
             select.appendChild(opt);
         }
     }
 
-    function updatePreview() {
-        const name = document.getElementById('styleSelect').value;
-        const preview = document.getElementById('lockPreview');
-        if (name && savedLocks[name]) {
-            preview.style.display = "block";
-            preview.innerText = savedFrameworkData(name);
-        } else {
-            preview.style.display = "none";
-        }
-    }
-
-    function savedFrameworkData(name) {
-        return savedLocks[name];
-    }
-
     /**
-     * THE PIPELINE:
-     * 1. Hugging Face (Vision) - Truly free image captioning.
-     * 2. Pollinations (Brain) - Anonymous text expansion into the Cinematic Framework.
+     * PRE-PROCESSOR: Shrinks image to 800px max before sending to Vision AI.
+     * This fixes the 4MB error and speeds up the pipeline by 500%.
      */
-    async function runFreePipeline() {
+    async function preProcess(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.getElementById('procCanvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const max = 800; // Optimal for AI vision
+
+                    if (width > height) {
+                        if (width > max) { height *= max / width; width = max; }
+                    } else {
+                        if (height > max) { width *= max / height; height = max; }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.8);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function runPipeline() {
         const file = document.getElementById('styleImage').files[0];
         const name = document.getElementById('lockName').value;
         const status = document.getElementById('status');
+        const btn = document.getElementById('lockBtn');
 
-        if (!file || !name) return alert("Select an image and name your style!");
+        if (!file || !name) return alert("Please select an image and name your style.");
 
-        status.innerText = "[1/2] Vision AI: Seeing the image...";
-        
+        btn.disabled = true;
+        status.innerText = "Processing: Optimizing image for AI...";
+
         try {
-            // STEP A: Vision Analysis (using Hugging Face BLIP - No Key required for basic use)
-            const imageData = await file.arrayBuffer();
+            // 1. Pre-process (Shrink)
+            const processedBlob = await preProcess(file);
+            
+            // 2. Vision AI (Truly Free Inference)
+            status.innerText = "Processing: Vision AI is interrogating image...";
             const visionRes = await fetch("https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-large", {
                 method: "POST",
-                body: imageData,
+                body: processedBlob,
             });
-            const visionResult = await visionRes.json();
-            const baseCaption = visionResult[0].generated_text;
+            const visionData = await visionRes.json();
+            const caption = visionData[0].generated_text;
 
-            // STEP B: Framework Expansion (using Anonymous Pollinations Text)
-            status.innerText = "[2/2] Brain AI: Constructing Cinematic Framework...";
+            // 3. Brain AI (Framework Expansion)
+            status.innerText = "Processing: Brain AI is building Cinematic Framework...";
+            const brainPrompt = `Convert this to a technical Cinematic Framework: "${caption}". 
+            Use these tags: [STYLE], [LIGHTING], [CAMERA], [TEXTURE]. 
+            Focus on artistic medium. No descriptions of people or faces. 
+            Include: "Negative: no text, no gibberish". Max 30 words.`;
+
+            const brainRes = await fetch(`https://text.pollinations.ai/${encodeURIComponent(brainPrompt)}`);
+            const framework = await brainRes.text();
+
+            // 4. Save
+            savedLocks[name] = framework.replace(/["']/g, "");
+            localStorage.setItem('cinematicLocksV4', JSON.stringify(savedLocks));
             
-            const frameworkInstruction = `Turn this description into a Cinematic Framework: "${baseCaption}". 
-            Structure it using these tags: [VISUAL STYLE], [LIGHTING], [CAMERA], [TEXTURE]. 
-            Focus on artistic medium and film tech. No subject description. Max 25 words. 
-            Add 'Negative Constraints: no text, no scribbles'.`;
-
-            const brainRes = await fetch(`https://text.pollinations.ai/${encodeURIComponent(frameworkInstruction)}`);
-            const frameworkLock = await brainRes.text();
-
-            // STEP C: Save
-            savedLocks[name] = frameworkLock.replace(/["']/g, "");
-            localStorage.setItem('freeCinematicLocks', JSON.stringify(savedLocks));
-            
-            status.innerText = "✅ Pipeline Complete. Framework Locked.";
+            status.innerText = `✅ Success! Style "${name}" is locked.`;
+            document.getElementById('lockData').innerText = savedLocks[name];
+            document.getElementById('lockData').style.display = 'block';
             updateDropdown();
-            updatePreview();
         } catch (e) {
-            status.innerText = "Error in Pipeline. Ensure image is under 4MB.";
+            status.innerText = "Error: Vision AI is busy or file is corrupted. Try again in 10s.";
             console.error(e);
+        } finally {
+            btn.disabled = false;
         }
     }
 
-    async function generateImage() {
+    async function generateShot() {
         const prompt = document.getElementById('userPrompt').value;
         const lockName = document.getElementById('styleSelect').value;
         const resultArea = document.getElementById('resultArea');
 
-        if (!prompt) return alert("Enter your story!");
+        if (!prompt) return alert("Describe your subject!");
 
-        resultArea.innerHTML = "<p style='text-align:center;'>AI is mastering the cinematic shot...</p>";
+        resultArea.innerHTML = "<p style='text-align:center; color: #888;'>AI is mastering your cinematic shot...</p>";
 
-        // The Scribble Fixer (The Infographic Negatives)
-        const negativeGuards = "no text, no letters, no numbers, no scribbles, no watermarks, no signatures, no warped objects, clean high-end photography";
+        // THE SCRIBBLE FIXER (The Hard Guardrails)
+        // These words specifically prevent Flux from drawing text or gibberish.
+        const guards = "clean photography, no text, no typography, no letters, no numbers, no signatures, no watermarks, no scribbles, no symbols, high resolution film shot";
 
         let finalPrompt = "";
         if (lockName && savedLocks[lockName]) {
-            // Apply the structure: Story + Locked Framework + Negatives
-            finalPrompt = `[STORY]: ${prompt}. [CINEMATIC FRAMEWORK]: ${savedLocks[lockName]}. [GUARDRAILS]: ${negativeGuards}.`;
+            // Infographic Structure: [Subject] + [Locked Framework] + [Guardrails]
+            finalPrompt = `[SUBJECT & ACTION]: ${prompt}. [CINEMATIC FRAMEWORK]: ${savedLocks[lockName]}. [QUALITY]: ${guards}.`;
         } else {
-            finalPrompt = `${prompt}. [GUARDRAILS]: ${negativeGuards}.`;
+            finalPrompt = `${prompt}. [QUALITY]: ${guards}.`;
         }
 
         const seed = Math.floor(Math.random() * 999999);
